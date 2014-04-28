@@ -5,8 +5,8 @@ def to_json(hash)
   JSON.generate(hash)
 end
 
-def error(msg)
-  [500, to_json({error: msg})]
+def json_error(msg)
+  halt [500, to_json({error: msg})]
 end
 
 class String

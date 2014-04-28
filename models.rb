@@ -11,7 +11,7 @@ end
 
 class User < ActiveRecord::Base
   has_many :transactions
-  validates :username, :phash, presence: true
+  validates :username, :phash, :salt, presence: true
 
   def self.login(username, password)
     user = User.find_by_username(username)
@@ -27,9 +27,9 @@ class User < ActiveRecord::Base
     end
   end
 
-  def self.generate_token(user)
-    user.token = (Digest::SHA2.new << (user.username + Time.now.to_s)).to_s
-    user.token_expires = Time.now + (24*365)
+  def self.generate_token(user, time = Time.now)
+    user.token = (Digest::SHA2.new << (user.username + time.to_s)).to_s
+    user.token_expires = time + (24*365)
     user.save
     return user.token
   end
@@ -52,7 +52,13 @@ class Transaction < ActiveRecord::Base
 end
 
 
-db = URI.parse('mysql2://kaley:password@localhost/mug_credit')
+if ENV['RACK_ENV'] == 'development'
+  db = URI.parse('mysql2://kaley:password@localhost/mug_credit')
+elsif ENV['RACK_ENV'] == 'test'
+  db = URI.parse('mysql2://kaley:password@localhost/mug_credit_test')
+else
+  db = URI.parse('mysql2://kaley:password@localhost/mug_credit')
+end
 
 ActiveRecord::Base.establish_connection(
   :adapter  => db.scheme == 'mysql2' ? 'mysql2' : db.scheme,

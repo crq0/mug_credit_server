@@ -6,9 +6,7 @@ require_relative 'models'
 require_relative 'helpers'
 require 'time'
 
-get '/' do
-  return to_json({:text => "Hello world"})
-end
+I18n.enforce_available_locales = false
 
 # Register
 post '/register' do
@@ -18,18 +16,17 @@ post '/register' do
   # Do we have a username and password in params?
   if not @username or not @password
     # error
-    return error("Username or password not provided")
+    return json_error("Username or password not provided")
   end
 
   # Check for username availability
   if User.find_by_username(@username)
     # error
-    return error("Username #{@username} has already been taken")
+    return json_error("Username #{@username} has already been taken")
   end
 
   # Register user
   salt = get_rand
-  puts salt
   if User.create(username: @username, 
     phash: User.hash_password(@password, salt), 
     salt: salt,
@@ -37,7 +34,7 @@ post '/register' do
     return 200
   else
     # it failed
-    return error("Failed to create user")
+    return json_error("Failed to create user")
   end
 end
 
@@ -49,7 +46,7 @@ post '/login' do
   # Do we have a username and password in params?
   if not @username or not @password
     # error
-    return error("Username or password not provided")
+    return json_error("Username or password not provided")
   end
 
   # Check password against username
@@ -62,13 +59,13 @@ before %r{transaction|balance} do
   @token = params[:token]
 
   if (not @token)
-    return error("Token needed")
+    return json_error("Token needed")
   end
 
   @user = User.find_by_token(@token)
 
   if (not @user)
-    return error("Invalid token")
+    return json_error("Invalid token")
   end
 
   # Successful login!
@@ -84,7 +81,7 @@ post '/transaction' do
   puts @amount, @created, @hash
 
   if (not @amount) or (not @created) or (not @thash)
-    return error("Parameter not provided")
+    return json_error("Parameter not provided")
   end
 
   @created = Time.parse(@created)
@@ -92,34 +89,33 @@ post '/transaction' do
   # Check for a conflicting hash
   if Transaction.find_by_thash(@thash)
     # conflicting hash error
-    return error("Conflicting transaction hash")
+    return json_error("Conflicting transaction hash")
   end
 
   # Save transaction
-  if Transaction.create(amount: @amount,
+  if (t = Transaction.create(amount: @amount,
     user: @user,
     thash: @thash,
-    created: @created)
+    created: @created))
 
     # Update balance
     if not (@amount.numeric?)
-      return error("Amount not numeric")
+      return json_error("Amount not numeric")
     end
 
-    @user.balance + @amount.to_f
+    @user.balance += t.amount
     if not @user.save
-      return error("Error saving balance")
+      return json_error("Error saving balance")
     else
       return 200
     end
   else
-    return error("Transaction could not be saved")
+    return json_error("Transaction could not be saved")
   end
 end
 
 # Get balance
 get '/balance' do
-  # Do we have required parameters?
 
   # Return balance
   return to_json({balance: @user.balance})
