@@ -1,6 +1,13 @@
 # spec/app_spec.rb
 require File.expand_path '../spec_helper.rb', __FILE__
 
+def login
+  user = build(:user)
+  post "/register?username=#{user.username}&password=password"
+  post "/login?username=#{user.username}&password=password"
+  JSON.parse(last_response.body)["token"]
+end
+
 describe "The Mug Credit Server" do
   it "should not allow accessing the home page" do
     get '/'
@@ -9,7 +16,7 @@ describe "The Mug Credit Server" do
 
   it "Should not get balance" do
     get '/balance'
-    last_response.body.should eq('Token needed')
+    last_response.body.should eq("{\"error\":\"Token needed\"}")
     last_response.status.should eq(500)
   end
 
@@ -21,15 +28,24 @@ describe "The Mug Credit Server" do
     User.all.last.username.should eq(user.username)
   end
 
+  it "should complain about a taken username" do
+    user = build(:user)
+
+    2.times { post "/register?#{user.username}&password=password" }
+    expect(last_response.status).to eq(500)
+  end
+
+
   it "should login a user" do
-    u = create(:user)
-    post "/login?username=#{u.username}&password=abc123"
+    post "/register?username=shouldlogin&password=abc123"
+    post "/login?username=shouldlogin&password=abc123"
     last_response.should be_ok
     JSON.parse(last_response.body)["token"].should_not eq(nil)
   end
 
-  it "should get a list of transactions" do
-    puts login
+  it "should get a balance" do
+    get "/balance?token=#{login}"
+    expect(last_response.status).to eq(200)
   end
 end
 
