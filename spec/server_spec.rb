@@ -28,6 +28,11 @@ describe "The Mug Credit Server" do
     User.all.last.username.should eq(user.username)
   end
 
+  it "should not register a blank user" do
+    post "/register?username=&password="
+    last_response.status.should eq(500)
+  end
+
   it "should complain about a taken username" do
     user = build(:user)
 
@@ -79,6 +84,7 @@ describe "The User model" do
   end
 
   it "should save a valid user" do
-    User.create()
+    u = build(:user)
+    expect(u.save).to eq(true)
   end
 end

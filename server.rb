@@ -27,13 +27,14 @@ post '/register' do
 
   # Register user
   salt = get_rand
-  if User.create(username: @username, 
+  u = User.new(username: @username, 
     phash: User.hash_password(@password, salt), 
     salt: salt,
-    balance: 0) then
+    balance: 0)
+
+  if u.save
     return 200
   else
-    # it failed
     return json_error("Failed to create user")
   end
 end
